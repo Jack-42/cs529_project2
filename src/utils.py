@@ -23,6 +23,16 @@ def get_y_priors(mat: np.ndarray):
     return probs
 
 
+def get_xi_in_yk(mat: np.ndarray):
+    """
+    Get the # of times each word (xi) in the vocabulary appears for entries
+    with label yk.
+    :param mat: np.ndarray, rows are entries
+    :return: np.ndarray of shape (vocab_size x label_size)
+    """
+    return None
+
+
 if __name__ == "__main__":
     mat1 = sparse.load_npz("../data/sparse_training.npz").toarray()
     priors = get_y_priors(mat1)
