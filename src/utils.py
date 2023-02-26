@@ -45,14 +45,14 @@ def get_xi_in_yk(mat: np.ndarray, vocab_size: int):
         arr[i, :] = cnts
     return arr
 
-def get_P_of_xi_given_yi(mat: np.ndarray, vocab_size: int, a: float):
+def get_P_of_xi_given_yk(mat: np.ndarray, vocab_size: int, a: float):
     """
     Estimate P(X|Y) using a MAP estimate.
     :param mat: np.ndarray, rows are entries. labels expected in last column
     :param vocab_size: int, number of words in vocabulary
     :param a: float, alpha value used to smooth estimate
     :return arr, np.ndarray of shape (label_sive x vocab_size) where
-        arr[j][i] indicates P(Xi | Yj)
+        arr[k][i] indicates P(Xi | Yk)
     """
     xi_in_yk_counts = get_xi_in_yk(mat, vocab_size)  # (label_size x vocab_size)
     word_count_in_yk = np.sum(xi_in_yk_counts, axis=1)  # (label_size, )
@@ -71,6 +71,6 @@ if __name__ == "__main__":
     # print(mat1)
     x = get_xi_in_yk(mat1, 61188)
     print(x)
-    estxi_given_yk = get_P_of_xi_given_yi(mat1, 61188, 1 / 61188)
+    estxi_given_yk = get_P_of_xi_given_yk(mat1, 61188, 1 / 61188)
     print(estxi_given_yk)
     print(estxi_given_yk.shape)
