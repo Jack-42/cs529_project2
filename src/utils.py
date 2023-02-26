@@ -23,19 +23,36 @@ def get_y_priors(mat: np.ndarray):
     return probs
 
 
-def get_xi_in_yk(mat: np.ndarray):
+def get_xi_in_yk(mat: np.ndarray, vocab_size: int):
     """
     Get the # of times each word (xi) in the vocabulary appears for entries
     with label yk.
-    :param mat: np.ndarray, rows are entries
-    :return: np.ndarray of shape (vocab_size x label_size)
+    :param mat: np.ndarray, rows are entries. labels expected in last column
+    :param vocab_size: int, number of words in vocabulary
+    :return: arr, np.ndarray of shape (label_size x vocab_size) where
+        arr[j][i] indicates the number of times word i appears in documents with
+        label j.
     """
-    return None
+    label_vals = np.unique(mat[:, -1])
+    n_labels = len(label_vals)
+    get_rows = lambda label_val: mat[np.where(mat[:, -1] == label_val)]
+    yk_rows = list(map(get_rows, label_vals))
+    arr = np.zeros((n_labels, vocab_size))
+    for i in range(len(label_vals)):
+        lv_rows = yk_rows[i]
+        # exclude document id and class
+        cnts = np.sum(lv_rows, axis=0, dtype=np.int64)[1:-1]
+        arr[i, :] = cnts
+    return arr
 
 
 if __name__ == "__main__":
     mat1 = sparse.load_npz("../data/sparse_training.npz").toarray()
-    priors = get_y_priors(mat1)
-    print(priors)
-    print(np.sum(priors))
-    print(type(priors))
+    print(mat1.shape)
+    print(mat1[0][0])
+    # mat1 = np.random.randint(0, 5, size=(5, 5))
+    # mat1[:, -1] = np.arange(0, 5, 1, dtype=np.int32)
+    # mat1[3, -1] = 1
+    # print(mat1)
+    x = get_xi_in_yk(mat1, 61188)
+    print(x)
