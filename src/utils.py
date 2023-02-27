@@ -13,7 +13,7 @@ def get_y_priors(mat: np.ndarray):
     """
     Get P(y_k) for all y_k in Y (set of all labels)
     :param mat: 2D sparse matrix, labels expected in last column. rows are entries
-    :return: arr (np.ndarray) where arr[i-1] = P(y_i)
+    :return: arr (np.ndarray) where arr[i-1] = P(y_i), shape (label_size,)
     """
     label_counts = np.unique(mat[:, -1], return_counts=True)
     labels, counts = label_counts[0], label_counts[1]
@@ -71,6 +71,6 @@ if __name__ == "__main__":
     # print(mat1)
     x = get_xi_in_yk(mat1, 61188)
     print(x)
-    estxi_given_yk = get_P_of_xi_given_yk(mat1, 61188, 1 / 61188)
+    estxi_given_yk = get_P_of_xi_given_yk(mat1, 61188, 1 + (1.0 / 61188.0))
     print(estxi_given_yk)
     print(estxi_given_yk.shape)
