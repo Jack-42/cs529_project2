@@ -25,7 +25,18 @@ class LogReg:
         # weights matrix
         self.W = np.zeros((k, n + 1))
 
-    def weight_update(self, mat: np.ndarray):
+    def train(self, n_steps: int, data: np.ndarray):
+        """
+        Method to train logistic reg model.
+        :param n_steps: int, the number of weight updates to apply
+        :param data: np.ndarray, matrix of size m x (n + 2) where first col is
+            ids and last row is labels
+        :return:
+        """
+        for _ in range(n_steps):
+            self._weight_update(data)
+
+    def _weight_update(self, mat: np.ndarray):
         """
         Update the weight of our model using gradient ascent.
         :param mat: np.ndarray, matrix of size m x (n + 2) where first col is
@@ -67,7 +78,7 @@ if __name__ == "__main__":
     for i in range(n_entries):
         mat1[i, -1] = np.random.randint(0, n_classes)
     print(mat1)
-    log_reg = LogReg(k=n_classes, n=v_size, lr=1, lam=1)
+    log_reg = LogReg(k=n_classes, n=v_size, lr=0.01, lam=1)
     print(log_reg.W)
-    log_reg.weight_update(mat1)
+    log_reg.train(n_steps=10, data=mat1)
     print(log_reg.W)
