@@ -45,6 +45,7 @@ def get_xi_in_yk(mat: np.ndarray, vocab_size: int):
         arr[i, :] = cnts
     return arr
 
+
 def get_P_of_xi_given_yk(mat: np.ndarray, vocab_size: int, a: float):
     """
     Estimate P(X|Y) using a MAP estimate.
@@ -61,16 +62,32 @@ def get_P_of_xi_given_yk(mat: np.ndarray, vocab_size: int, a: float):
     arr = numer / denom.reshape((-1, 1))
     return arr
 
+
+def get_accuracy(predicted: np.ndarray, actual: np.ndarray) -> float:
+    """
+    Get classification accuracy of predictions
+    :param predicted: np.ndarray, predicted values
+    :param actual: np.ndarray, actual values
+    :return: float, classification accuracy
+    """
+    assert len(predicted) == len(actual)
+    matches = np.where(predicted == actual)[0]
+    n_correct = matches.shape[0]
+    total = len(actual)
+    return n_correct / total
+
+
 if __name__ == "__main__":
-    mat1 = sparse.load_npz("../data/sparse_training.npz").toarray()
-    print(mat1.shape)
-    print(mat1[0][0])
-    # mat1 = np.random.randint(0, 5, size=(5, 5))
-    # mat1[:, -1] = np.arange(0, 5, 1, dtype=np.int32)
-    # mat1[3, -1] = 1
-    # print(mat1)
-    x = get_xi_in_yk(mat1, 61188)
-    print(x)
-    estxi_given_yk = get_P_of_xi_given_yk(mat1, 61188, 1 + (1.0 / 61188.0))
-    print(estxi_given_yk)
-    print(estxi_given_yk.shape)
+    # mat1 = sparse.load_npz("../data/sparse_training.npz").toarray()
+    # print(mat1.shape)
+    # print(mat1[0][0])
+    mat1 = np.random.randint(0, 5, size=(5, 5))
+    mat1[:, -1] = np.arange(0, 5, 1, dtype=np.int32)
+    mat1[3, -1] = 1
+    print(mat1)
+    mat2 = np.random.randint(0, 5, size=(5, 5))
+    mat2[:, -1] = np.arange(0, 5, 1, dtype=np.int32)
+    mat2[4, -1] = 1
+    print(mat2)
+    acc = get_accuracy(mat1[:, -1], mat2[:, -1])
+    print(acc)
