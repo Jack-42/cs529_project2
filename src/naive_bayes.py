@@ -35,6 +35,7 @@ class NaiveBayes:
         """
         Evaluate model on given documents.
         :param mat: np.ndarray, rows are entries. labels expected in last column
+            if class_in_mat is True
         :param id_in_mat, true if mat[:, 0] are IDs
         :param class_in_mat, true if mat[:, -1] are classes
         :return arr, np.ndarray of shape mat.shape[0] where arr[i] is predicted
@@ -68,3 +69,8 @@ if __name__ == "__main__":
     output[:, 0] = test_mat[:, 0]
     output[:, 1] = nb_pred
     np.savetxt("../data/nb_basic_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
+
+    # test acc
+    from utils import get_accuracy
+    nb_pred_train = nb.classify(mat[:, 1:-1], id_in_mat=False, class_in_mat=False)
+    print("train acc: ", get_accuracy(nb_pred_train, mat[:, -1]))

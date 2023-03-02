@@ -55,17 +55,46 @@ class LogReg:
             delta[y_val] = row
 
         # get P(Y | X, W)
-        xt = np.transpose(x)
-        probs = np.exp(self.W @ xt)
-        # last row all 1s to match equations 27-28 in Mitchell
-        probs[-1, :] = 1
-        col_sums = np.sum(probs, axis=0)
-        probs = probs / col_sums
+        probs = self._P_Y_given_X(x)
 
         # update
         w_change = self.lr * ((delta - probs) @ x - (self.lam * self.W))
         self.W = self.W + w_change
 
+    def _P_Y_given_X(self, x):
+        xt = np.transpose(x)
+        probs = np.exp(self.W @ xt)
+        # last row all 1s to match equations 27-28 in Mitchell
+        probs[-1, :] = 1
+        # normalize columns to be valid probabilities
+        col_sums = np.sum(probs, axis=0)
+        probs = probs / col_sums
+        return probs  # (label_size, # docs)
+
+    def classify(self, mat: np.ndarray, id_in_mat=True, class_in_mat=True) -> np.ndarray:
+        """
+        Evaluate model on given documents.
+        :param mat: np.ndarray, rows are entries. labels expected in last column
+            if class_in_mat is True
+        :param id_in_mat, true if mat[:, 0] are IDs
+        :param class_in_mat, true if mat[:, -1] are classes
+        :return arr, np.ndarray of shape mat.shape[0] where arr[i] is predicted
+            class of document i.
+        """
+        start = 0
+        if id_in_mat:
+            start = 1
+        end = mat.shape[1]
+        if class_in_mat:
+            end = -1
+        
+        x = mat[:, start:end]
+        # add column of 1s
+        x = np.concatenate([np.ones((mat.shape[0], 1)), x], axis=1)
+
+        probs = self._P_Y_given_X(x)
+
+        return np.argmax(probs, axis=0) + 1
 
 if __name__ == "__main__":
     n_classes = 3  # num classes
