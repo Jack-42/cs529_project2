@@ -52,7 +52,7 @@ def get_P_of_xi_given_yk(mat: np.ndarray, vocab_size: int, a: float):
     :param mat: np.ndarray, rows are entries. labels expected in last column
     :param vocab_size: int, number of words in vocabulary
     :param a: float, alpha value used to smooth estimate
-    :return arr, np.ndarray of shape (label_sive x vocab_size) where
+    :return arr, np.ndarray of shape (label_size x vocab_size) where
         arr[k][i] indicates P(Xi | Yk)
     """
     xi_in_yk_counts = get_xi_in_yk(mat, vocab_size)  # (label_size x vocab_size)
@@ -62,6 +62,34 @@ def get_P_of_xi_given_yk(mat: np.ndarray, vocab_size: int, a: float):
     arr = numer / denom.reshape((-1, 1))
     return arr
 
+def get_standardization_mean_stddev(mat: np.ndarray) -> "tuple[np.ndarray, np.ndarray]":
+    """
+    Get mean and standard deviation of features using training examples.
+    :param mat: np.ndarray, rows are examples, columns are features
+        (assume no id or class columns)
+    :return tup, tuple[np.ndarray, np.ndarray], first contain means, 
+        second contain standard deviations, each of shape (vocab_size).
+    """
+    means = np.mean(mat, axis=0)
+    devs = np.std(mat, axis=0)
+    tup = means, devs
+    return tup
+
+def standardize_features(mat: np.ndarray, means: np.ndarray, devs: np.ndarray) -> np.ndarray:
+    """
+    Standardize features such that each has mean 0 and standard deviation 1.
+    :param mat: np.ndarray, rows are examples, columns are features
+        (assume no id or class columns)
+    :param means: np.ndarray, the mean of every feature given the mat data
+    :param devs: np.ndarray, the standard deviation of every feature given the mat data
+    :return out: np.ndarray, new mat with standardized features
+    """
+    with np.errstate(divide='ignore', invalid='ignore'):
+        out = (mat - means) / devs
+    
+    # handle devs close to 0
+    out = np.nan_to_num(out)
+    return out
 
 def get_accuracy(predicted: np.ndarray, actual: np.ndarray) -> float:
     """
@@ -91,3 +119,7 @@ if __name__ == "__main__":
     print(mat2)
     acc = get_accuracy(mat1[:, -1], mat2[:, -1])
     print(acc)
+    mat2 = sparse.load_npz("../data/sparse_training.npz").toarray()
+    means, devs = get_standardization_mean_stddev(mat2[:, 1:-1])
+    std_mat2 = standardize_features(mat2[:, 1:-1], means, devs)
+    print(std_mat2[550:660, :6])
