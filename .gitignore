@@ -171,4 +171,5 @@ cython_debug/
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 .history/
+results/
 
