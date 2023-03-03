@@ -27,20 +27,38 @@ class LogReg:
         # weights matrix
         self.W = np.zeros((k, n + 1))
 
-    def train(self, n_steps: int, data: np.ndarray, print_train_acc=True):
+    def train(self, n_steps: int, data: np.ndarray, print_acc=True, val_data: np.ndarray = None):
         """
         Method to train logistic reg model.
         :param n_steps: int, the number of weight updates to apply
         :param data: np.ndarray, matrix of size m x (n + 2) where first col is
             ids and last col is labels
+        :param val_data: np.ndarray, test data matrix of size m' x (n' + 2), halts if acc decreases
         :return: None
         """
-        if print_train_acc:
+        if not (val_data is None):
+            last_acc = get_accuracy(self.classify(val_data[:, :-1], id_in_mat=True, class_in_mat=False), val_data[:, -1])
+        if print_acc:
             print("train accuracy on train data before training:  %f" % (get_accuracy(self.classify(data[:, :-1], id_in_mat=True, class_in_mat=False), data[:, -1])))
+            if not (val_data is None):
+                print("train accuracy on test data before training:  %f" % (last_acc))
         for step in range(n_steps):
             self._weight_update(data)
-            if print_train_acc:
+            if not (val_data is None):
+                curr_acc = get_accuracy(self.classify(val_data[:, :-1], id_in_mat=True, class_in_mat=False), val_data[:, -1])
+            if print_acc:
                 print("train accuracy on train data at step %d:  %f" % (step, get_accuracy(self.classify(data[:, :-1], id_in_mat=True, class_in_mat=False), data[:, -1])))
+                if not (val_data is None):
+                    print("train accuracy on test data at step %d:  %f" % (step, curr_acc))
+
+            if (not (val_data is None)) and (curr_acc < last_acc):
+                # stop early
+                if print_acc:
+                    print("stopped after step %d (early)" % (step))
+                return
+
+            if not (val_data is None):
+                last_acc = curr_acc
 
     def _weight_update(self, mat: np.ndarray):
         """
