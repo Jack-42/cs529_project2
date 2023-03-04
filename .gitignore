@@ -1,6 +1,7 @@
 .gitignore
 data
 project_env
+figures
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
