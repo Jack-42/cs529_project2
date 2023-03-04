@@ -98,10 +98,10 @@ def get_accuracy(predicted: np.ndarray, actual: np.ndarray) -> float:
     :param actual: np.ndarray, actual values
     :return: float, classification accuracy
     """
-    assert len(predicted) == len(actual)
+    assert predicted.shape[0] == actual.shape[0]
     matches = np.where(predicted == actual)[0]
     n_correct = matches.shape[0]
-    total = len(actual)
+    total = actual.shape[0]
     return n_correct / total
 
 

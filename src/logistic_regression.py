@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import sparse
 
 from utils import get_accuracy
 
@@ -25,29 +26,31 @@ class LogReg:
         self.lr = lr
         self.lam = lam
         # weights matrix
-        self.W = np.zeros((k, n + 1))
+        self.W = sparse.csr_matrix(np.zeros((k, n + 1)))
 
-    def train(self, n_steps: int, data: np.ndarray, print_acc=True, val_data: np.ndarray = None):
+    def train(self, n_steps: int, data: sparse.lil_matrix, print_acc=True, val_data: sparse.lil_matrix = None):
         """
         Method to train logistic reg model.
         :param n_steps: int, the number of weight updates to apply
-        :param data: np.ndarray, matrix of size m x (n + 2) where first col is
+        :param data: sparse.lil_matrix, matrix of size m x (n + 2) where first col is
             ids and last col is labels
-        :param val_data: np.ndarray, test data matrix of size m' x (n' + 2), halts if acc decreases
+        :param val_data: sparse.lil_matrix, test data matrix of size m' x (n' + 2), halts if acc decreases
         :return: None
         """
+        n_entries = data.shape[0]
         if not (val_data is None):
-            last_acc = get_accuracy(self.classify(val_data[:, :-1], id_in_mat=True, class_in_mat=False), val_data[:, -1])
+            val_n_entries = val_data.shape[0]
+            last_acc = get_accuracy(self.classify(val_data[:, :-1], id_in_mat=True, class_in_mat=False).reshape((val_n_entries, 1)), val_data[:, -1])
         if print_acc:
-            print("train accuracy on train data before training:  %f" % (get_accuracy(self.classify(data[:, :-1], id_in_mat=True, class_in_mat=False), data[:, -1])))
+            print("train accuracy on train data before training:  %f" % (get_accuracy(self.classify(data[:, :-1], id_in_mat=True, class_in_mat=False).reshape((n_entries, 1)), data[:, -1])))
             if not (val_data is None):
                 print("train accuracy on test data before training:  %f" % (last_acc))
         for step in range(n_steps):
             self._weight_update(data)
             if not (val_data is None):
-                curr_acc = get_accuracy(self.classify(val_data[:, :-1], id_in_mat=True, class_in_mat=False), val_data[:, -1])
+                curr_acc = get_accuracy(self.classify(val_data[:, :-1], id_in_mat=True, class_in_mat=False).reshape((val_n_entries, 1)), val_data[:, -1])
             if print_acc:
-                print("train accuracy on train data at step %d:  %f" % (step, get_accuracy(self.classify(data[:, :-1], id_in_mat=True, class_in_mat=False), data[:, -1])))
+                print("train accuracy on train data at step %d:  %f" % (step, get_accuracy(self.classify(data[:, :-1], id_in_mat=True, class_in_mat=False).reshape((n_entries, 1)), data[:, -1])))
                 if not (val_data is None):
                     print("train accuracy on test data at step %d:  %f" % (step, curr_acc))
 
@@ -60,36 +63,38 @@ class LogReg:
             if not (val_data is None):
                 last_acc = curr_acc
 
-    def _weight_update(self, mat: np.ndarray):
+    def _weight_update(self, mat: sparse.lil_matrix):
         """
         Update the weight of our model using gradient ascent.
-        :param mat: np.ndarray, matrix of size m x (n + 2) where first col is
+        :param mat: sparse.lil_matrix, matrix of size m x (n + 2) where first col is
             ids and last col is labels
         :return: None
         """
         x, y = mat[:, :-1], mat[:, -1]
         x[:, 0] = 1
-        m = len(y)
+        m = y.shape[0]
 
         # calculate delta, delta[j][i] = 1 if row i in mat has label j, else 0
         delta = np.zeros((self.k, m))
         for i, y_val in enumerate(self.labels):
-            row = np.zeros((m,))
+            row = np.zeros((m,1))
             row[np.nonzero(y == y_val)] = 1
-            delta[i] = row
+            delta[i] = row.reshape((m, ))
+
+        delta = sparse.csr_matrix(delta)
 
         # get P(Y | X, W)
         probs = self._P_Y_given_X(x)
 
         # update
-        w_change = self.lr * ((delta - probs) @ x - (self.lam * self.W))
+        w_change = self.lr * ((delta - probs) * x - (self.lam * self.W))
         self.W = self.W + w_change
 
     def _P_Y_given_X(self, x):
         xt = np.transpose(x)
 
         with np.errstate(over='ignore', invalid='ignore'):
-            probs = np.exp(self.W @ xt)
+            probs = np.exp((self.W * xt).toarray())
         
         # handle overflow in exp()
         probs = np.nan_to_num(probs)
@@ -104,16 +109,16 @@ class LogReg:
         col_sums = np.nan_to_num(col_sums)
 
         probs = probs / col_sums
-        return probs  # (label_size, # docs)
+        return sparse.csr_matrix(probs)  # (label_size, # docs)
 
-    def classify(self, mat: np.ndarray, id_in_mat=True, class_in_mat=True) -> np.ndarray:
+    def classify(self, mat: sparse.lil_matrix, id_in_mat=True, class_in_mat=True) -> np.ndarray:
         """
         Evaluate model on given documents.
-        :param mat: np.ndarray, rows are entries. labels expected in last column
+        :param mat: sparse.lil_matrix, rows are entries. labels expected in last column
             if class_in_mat is True
         :param id_in_mat, true if mat[:, 0] are IDs
         :param class_in_mat, true if mat[:, -1] are classes
-        :return arr, np.ndarray of shape mat.shape[0] where arr[i] is predicted
+        :return arr, np.ndarray of shape (mat.shape[0], 1) where arr[i] is predicted
             class of document i.
         """
         start = 0
@@ -125,11 +130,11 @@ class LogReg:
         
         x = mat[:, start:end]
         # add column of 1s
-        x = np.concatenate([np.ones((mat.shape[0], 1)), x], axis=1)
+        x = sparse.hstack([np.ones((mat.shape[0], 1)), x])
 
         probs = self._P_Y_given_X(x)
 
-        return np.argmax(probs, axis=0) + 1
+        return (np.argmax(probs, axis=0) + 1).reshape((mat.shape[0], 1))
 
 if __name__ == "__main__":
     # n_classes = 3  # num classes
@@ -144,27 +149,31 @@ if __name__ == "__main__":
     # print(mat1)
     # log_reg = LogReg(k=n_classes, n=v_size, lr=0.01, lam=1)
     # print(log_reg.W)
-    # log_reg.train(n_steps=10, data=mat1)
+    # log_reg.train(n_steps=10, data=sparse.lil_matrix(mat1))
     # print(log_reg.W)
-    import scipy.sparse as sparse
     from utils import get_standardization_mean_stddev, standardize_features
 
     # make unhandled numerical warnings obvious
     import warnings
     warnings.filterwarnings("error")
 
-    mat = sparse.load_npz("../data/sparse_training.npz").toarray()
-    means, devs = get_standardization_mean_stddev(mat[:, 1:-1])
+    mat = sparse.load_npz("../data/sparse_training.npz")
+    arrmat = mat.toarray()
+    mat = mat.tolil()
+    means, devs = get_standardization_mean_stddev(arrmat[:, 1:-1])
     mat[:, 1:-1] = standardize_features(mat[:, 1:-1], means, devs)
-    lab_count = len(np.unique(mat[:, -1]))
+    lab_count = len(np.unique(arrmat[:, -1]))
     attr_count = mat.shape[1] - 2
     n_entries = mat.shape[0]
     log_reg = LogReg(k=lab_count, n=attr_count, lr=0.01, lam=1)
-    log_reg.train(100, mat)
-    test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
+    import time
+    t = time.perf_counter()
+    log_reg.train(10, mat)
+    print("Time %f" %(time.perf_counter() - t))
+    test_mat = sparse.load_npz("../data/sparse_testing.npz").tolil()
     test_mat[:, 1:] = standardize_features(test_mat[:, 1:], means, devs)
     lr_pred = log_reg.classify(test_mat, id_in_mat=True, class_in_mat=False)
     output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
-    output[:, 0] = test_mat[:, 0]
-    output[:, 1] = lr_pred
+    output[:, 0] = test_mat[:, 0].toarray().reshape((test_mat.shape[0],))
+    output[:, 1] = lr_pred.reshape((lr_pred.shape[0],))
     np.savetxt("../data/lr_basic_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")

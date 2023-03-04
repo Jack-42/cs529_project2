@@ -6,7 +6,7 @@ import scipy.sparse as sparse
 
 from naive_bayes import NaiveBayes
 from logistic_regression import LogReg
-from utils import get_accuracy
+from utils import get_accuracy, get_standardization_mean_stddev, standardize_features
 
 """
 @author Jack Ringer, Mike Adams
@@ -72,6 +72,16 @@ def lr_main(data: np.ndarray, save_pth: str):
     np.random.shuffle(data)
     train_data, val_data = data[0:cutoff], data[cutoff:]
 
+    means, devs = get_standardization_mean_stddev(train_data[:, 1:-1])
+    train_data[:, 1:-1] = standardize_features(train_data[:, 1:-1], means, devs)
+    val_data[:, 1:-1] = standardize_features(val_data[:, 1:-1], means, devs)
+
+    # sparsify
+    train_data, val_data = sparse.lil_matrix(train_data), sparse.lil_matrix(val_data)
+
+    n_entries = train_data.shape[0]
+    val_n_entries = val_data.shape[0]
+
     etas = np.linspace(0.001, 0.01, 15)
     import sys
     if len(sys.argv) == 3:
@@ -95,8 +105,8 @@ def lr_main(data: np.ndarray, save_pth: str):
                 res = {"eta": eta, "lambda": lamb, "n_iter": iter}
                 lr = LogReg(label_count, attr_count, eta, lamb)
                 lr.train(iter, train_data, print_acc=False)
-                train_pred = lr.classify(train_data, id_in_mat=True, class_in_mat=True)
-                val_pred = lr.classify(val_data, id_in_mat=True, class_in_mat=True)
+                train_pred = lr.classify(train_data, id_in_mat=True, class_in_mat=True).reshape((n_entries, 1))
+                val_pred = lr.classify(val_data, id_in_mat=True, class_in_mat=True).reshape((val_n_entries, 1))
                 res["train_acc"] = get_accuracy(train_pred, train_data[:, -1])
                 res["val_acc"] = get_accuracy(val_pred, val_data[:, -1])
                 results.append(res)
