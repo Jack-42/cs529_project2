@@ -104,6 +104,27 @@ def get_accuracy(predicted: np.ndarray, actual: np.ndarray) -> float:
     total = actual.shape[0]
     return n_correct / total
 
+def get_confusion_matrix(predicted: np.ndarray, actual: np.ndarray) -> np.ndarray:
+    """
+    Get confusion matrix of predictions to visualize errors
+    :param predicted: np.ndarray, predicted values
+    :param actual: np.ndarray, actual values
+    :return: c: np.ndarray, c[i, j] is the # of times an instance with class j
+        was classified as category i.
+    """
+    pred = predicted.reshape((predicted.shape[0],))
+    actu = actual.reshape((actual.shape[0],))
+    assert pred.shape[0] == actu.shape[0]
+    n_classes = len(np.unique(pred))
+    c = np.zeros((n_classes, n_classes), dtype=np.int64)
+    for i in range(n_classes):
+        for j in range(n_classes):
+            iclass = i + 1
+            jclass = j + 1
+            truthindices = np.nonzero(actu == jclass)
+            withi = np.nonzero(pred[truthindices] == iclass)
+            c[i, j] = withi[0].shape[0]
+    return c
 
 if __name__ == "__main__":
     # mat1 = sparse.load_npz("../data/sparse_training.npz").toarray()

@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.sparse as sparse
 
 from utils import get_y_priors, get_P_of_xi_given_yk
 
@@ -58,19 +57,51 @@ class NaiveBayes:
         return np.argmax(all_classes, axis=1) + 1
 
 if __name__ == "__main__":
-    mat = sparse.load_npz("../data/sparse_training.npz").toarray()
-    lab_count = len(np.unique(mat[:, -1]))
-    attr_count = mat.shape[1] - 2
-    nb = NaiveBayes(lab_count, attr_count, 1.0 + (1.0 / attr_count))
-    nb.train(mat)
-    test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
-    nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)
-    output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
-    output[:, 0] = test_mat[:, 0]
-    output[:, 1] = nb_pred
-    np.savetxt("../data/nb_basic_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
+    import scipy.sparse as sparse
 
-    # test acc
+    # mat = sparse.load_npz("../data/sparse_training.npz").toarray()
+    # lab_count = len(np.unique(mat[:, -1]))
+    # attr_count = mat.shape[1] - 2
+    # nb = NaiveBayes(lab_count, attr_count, 1.0 + 0.070716)
+    # nb.train(mat)
+    # test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
+    # nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)
+    # output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
+    # output[:, 0] = test_mat[:, 0]
+    # output[:, 1] = nb_pred
+    # np.savetxt("../data/nb_beta_0_070716_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
+
+    # # test acc
+    # from utils import get_accuracy
+    # nb_pred_train = nb.classify(mat[:, 1:-1], id_in_mat=False, class_in_mat=False)
+    # print("train acc: ", get_accuracy(nb_pred_train, mat[:, -1]))
+
+    data = sparse.load_npz("../data/sparse_training.npz").toarray()
+
+    label_count = len(np.unique(data[:, -1]))
+    attr_count = data.shape[1] - 2
+
+    # split into train/val
+    split_r = 0.8  # 80% train, 20% val
+    cutoff = int(len(data[:, 0]) * split_r)
+    np.random.seed(42)  # for reproducibility
+    np.random.shuffle(data)
+    train_data, val_data = data[0:cutoff], data[cutoff:]
+
+    nb = NaiveBayes(label_count, attr_count, 1.0 + 0.070716)
+    nb.train(train_data)
+    train_pred = nb.classify(train_data, id_in_mat=True, class_in_mat=True)
+    val_pred = nb.classify(val_data, id_in_mat=True, class_in_mat=True)
+
+    from utils import get_confusion_matrix
+    c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
+    print(c_mat)
+
+    from plots import plot_confusion_matrix
+    import os
+    os.makedirs("../figures", exist_ok=True)
+    save_path = "../figures/nb_070716_conf_mat.png"
+    plot_confusion_matrix(c_mat, title="NB", save_pth=save_path)
+
     from utils import get_accuracy
-    nb_pred_train = nb.classify(mat[:, 1:-1], id_in_mat=False, class_in_mat=False)
-    print("train acc: ", get_accuracy(nb_pred_train, mat[:, -1]))
+    print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))

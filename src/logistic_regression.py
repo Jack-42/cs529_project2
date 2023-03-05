@@ -34,6 +34,7 @@ class LogReg:
         :param n_steps: int, the number of weight updates to apply
         :param data: sparse.lil_matrix, matrix of size m x (n + 2) where first col is
             ids and last col is labels
+        :param print_acc, whether to print accuracies to stdout at every step during training
         :param val_data: sparse.lil_matrix, test data matrix of size m' x (n' + 2), halts if acc decreases
         :return: None
         """
