@@ -1,3 +1,5 @@
+from itertools import cycle
+
 import numpy as np
 from scipy import sparse
 
@@ -28,7 +30,7 @@ class LogReg:
         # weights matrix
         self.W = sparse.csr_matrix(np.zeros((k, n + 1)))
 
-    def train(self, n_steps: int, data: sparse.lil_matrix, print_acc=True, val_data: sparse.lil_matrix = None):
+    def train(self, n_steps: int, data: sparse.lil_matrix, print_acc=True, val_data: sparse.lil_matrix = None, minibatch_size=None):
         """
         Method to train logistic reg model.
         :param n_steps: int, the number of weight updates to apply
@@ -36,9 +38,13 @@ class LogReg:
             ids and last col is labels
         :param print_acc, whether to print accuracies to stdout at every step during training
         :param val_data: sparse.lil_matrix, test data matrix of size m' x (n' + 2), halts if acc decreases
+        :param minibatch_size, number of training examples to use in each update
         :return: None
         """
         n_entries = data.shape[0]
+        curr_acc = 0.0
+        last_acc = 0.0
+        bad_count = 0
         if not (val_data is None):
             val_n_entries = val_data.shape[0]
             last_acc = get_accuracy(self.classify(val_data[:, :-1], id_in_mat=True, class_in_mat=False).reshape((val_n_entries, 1)), val_data[:, -1])
@@ -46,8 +52,20 @@ class LogReg:
             print("train accuracy on train data before training:  %f" % (get_accuracy(self.classify(data[:, :-1], id_in_mat=True, class_in_mat=False).reshape((n_entries, 1)), data[:, -1])))
             if not (val_data is None):
                 print("train accuracy on test data before training:  %f" % (last_acc))
+
+        data_list = [data]
+        if not (minibatch_size is None):
+            data_list = []
+            last = np.ceil(float(n_entries) / minibatch_size).astype(int) - 1
+            for i in range(0, last, minibatch_size):
+                if i + minibatch_size > n_entries:
+                    data_list.append(data[i:, :])
+                else:
+                    data_list.append(data[i:i+minibatch_size, :])
+        data_cycle = cycle(data_list)
+
         for step in range(n_steps):
-            self._weight_update(data)
+            self._weight_update(next(data_cycle))
             if not (val_data is None):
                 curr_acc = get_accuracy(self.classify(val_data[:, :-1], id_in_mat=True, class_in_mat=False).reshape((val_n_entries, 1)), val_data[:, -1])
             if print_acc:
@@ -57,12 +75,18 @@ class LogReg:
 
             if (not (val_data is None)) and (curr_acc < last_acc):
                 # stop early
-                if print_acc:
-                    print("stopped after step %d (early)" % (step))
-                return
+                bad_count = bad_count + 1
+                if bad_count > 5:
+                    if print_acc:
+                        print("stopped after step %d (early)" % (step))
+                    return step
+            else:
+                bad_count = 0
 
             if not (val_data is None):
                 last_acc = curr_acc
+
+        return step
 
     def _weight_update(self, mat: sparse.lil_matrix):
         """
@@ -160,16 +184,29 @@ if __name__ == "__main__":
 
     mat = sparse.load_npz("../data/sparse_training.npz")
     arrmat = mat.toarray()
-    mat = mat.tolil()
-    means, devs = get_standardization_mean_stddev(arrmat[:, 1:-1])
-    mat[:, 1:-1] = standardize_features(mat[:, 1:-1], means, devs)
+    # split into train/val
+    split_r = 0.8  # 80% train, 20% val
+    cutoff = int(len(arrmat[:, 0]) * split_r)
+    np.random.seed(42)  # for reproducibility
+    np.random.shuffle(arrmat)
+    train_data, val_data = arrmat[0:cutoff], arrmat[cutoff:]
+    
+    means, devs = get_standardization_mean_stddev(train_data[:, 1:-1])
+    train_data[:, 1:-1] = standardize_features(train_data[:, 1:-1], means, devs)
+    val_data[:, 1:-1] = standardize_features(val_data[:, 1:-1], means, devs)
+
+    # sparsify
+    train_data, val_data = sparse.lil_matrix(train_data), sparse.lil_matrix(val_data)
+
     lab_count = len(np.unique(arrmat[:, -1]))
     attr_count = mat.shape[1] - 2
     n_entries = mat.shape[0]
-    log_reg = LogReg(k=lab_count, n=attr_count, lr=0.01, lam=1)
+    log_reg = LogReg(k=lab_count, n=attr_count, lr=0.0001, lam=0.0001)
     import time
     t = time.perf_counter()
-    log_reg.train(10, mat)
+    log_reg.train(67, train_data, val_data=val_data, minibatch_size=None)
+    log_reg.lr = 0.0000001
+    log_reg.train(10000, train_data, val_data=val_data, minibatch_size=9000)
     print("Time %f" %(time.perf_counter() - t))
     test_mat = sparse.load_npz("../data/sparse_testing.npz").tolil()
     test_mat[:, 1:] = standardize_features(test_mat[:, 1:], means, devs)
@@ -177,4 +214,4 @@ if __name__ == "__main__":
     output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
     output[:, 0] = test_mat[:, 0].toarray().reshape((test_mat.shape[0],))
     output[:, 1] = lr_pred.reshape((lr_pred.shape[0],))
-    np.savetxt("../data/lr_basic_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
+    np.savetxt("../data/lr_basic_test_out_0001_0001_67_10000_80_20_earlyhalt_Whole_thenminibatchsize9000_lr0000001.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")

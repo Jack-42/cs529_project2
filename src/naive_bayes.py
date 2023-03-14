@@ -59,49 +59,56 @@ class NaiveBayes:
 if __name__ == "__main__":
     import scipy.sparse as sparse
 
-    # mat = sparse.load_npz("../data/sparse_training.npz").toarray()
-    # lab_count = len(np.unique(mat[:, -1]))
-    # attr_count = mat.shape[1] - 2
-    # nb = NaiveBayes(lab_count, attr_count, 1.0 + 0.070716)
-    # nb.train(mat)
-    # test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
-    # nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)
-    # output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
-    # output[:, 0] = test_mat[:, 0]
-    # output[:, 1] = nb_pred
-    # np.savetxt("../data/nb_beta_0_070716_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
+    mat = sparse.load_npz("../data/sparse_training.npz").toarray()
+    lab_count = len(np.unique(mat[:, -1]))
+    attr_count = mat.shape[1] - 2
+    nb = NaiveBayes(lab_count, attr_count, 1.0 + 0.0452)
+    nb.train(mat)
+    test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
+    nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)
+    output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
+    output[:, 0] = test_mat[:, 0]
+    output[:, 1] = nb_pred
+    np.savetxt("../data/nb_beta_0_0452_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
 
     # # test acc
     # from utils import get_accuracy
     # nb_pred_train = nb.classify(mat[:, 1:-1], id_in_mat=False, class_in_mat=False)
     # print("train acc: ", get_accuracy(nb_pred_train, mat[:, -1]))
 
-    data = sparse.load_npz("../data/sparse_training.npz").toarray()
+    # data = sparse.load_npz("../data/sparse_training.npz").toarray()
 
-    label_count = len(np.unique(data[:, -1]))
-    attr_count = data.shape[1] - 2
+    # label_count = len(np.unique(data[:, -1]))
+    # attr_count = data.shape[1] - 2
 
-    # split into train/val
-    split_r = 0.8  # 80% train, 20% val
-    cutoff = int(len(data[:, 0]) * split_r)
-    np.random.seed(42)  # for reproducibility
-    np.random.shuffle(data)
-    train_data, val_data = data[0:cutoff], data[cutoff:]
+    # # split into train/val
+    # split_r = 0.8  # 80% train, 20% val
+    # cutoff = int(len(data[:, 0]) * split_r)
+    # np.random.seed(12)  # for reproducibility
+    # np.random.shuffle(data)
+    # train_data, val_data = data[0:cutoff], data[cutoff:]
 
-    nb = NaiveBayes(label_count, attr_count, 1.0 + 0.070716)
-    nb.train(train_data)
-    train_pred = nb.classify(train_data, id_in_mat=True, class_in_mat=True)
-    val_pred = nb.classify(val_data, id_in_mat=True, class_in_mat=True)
+    # nb = NaiveBayes(label_count, attr_count, 1.0 + 0.090918)
+    # nb.train(train_data)
+    # train_pred = nb.classify(train_data, id_in_mat=True, class_in_mat=True)
+    # val_pred = nb.classify(val_data, id_in_mat=True, class_in_mat=True)
 
-    from utils import get_confusion_matrix
-    c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
-    print(c_mat)
+    # from utils import get_confusion_matrix
+    # c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
+    # print(c_mat)
 
-    from plots import plot_confusion_matrix
-    import os
-    os.makedirs("../figures", exist_ok=True)
-    save_path = "../figures/nb_070716_conf_mat.png"
-    plot_confusion_matrix(c_mat, title="NB", save_pth=save_path)
+    # from plots import plot_confusion_matrix
+    # import os
+    # os.makedirs("../figures", exist_ok=True)
+    # save_path = "../figures/nb_090918_conf_mat_seed12.png"
+    # plot_confusion_matrix(c_mat, title="NB", save_pth=save_path)
 
-    from utils import get_accuracy
-    print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))
+    # from utils import get_accuracy
+    # print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))
+
+    # test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
+    # nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)
+    # output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
+    # output[:, 0] = test_mat[:, 0]
+    # output[:, 1] = nb_pred
+    # np.savetxt("../data/nb_beta_0_090918_test_out_seed12_train8020.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
