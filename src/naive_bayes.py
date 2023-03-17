@@ -1,6 +1,7 @@
 import numpy as np
 
 from utils import get_y_priors, get_P_of_xi_given_yk
+from utils import entropy, get_num_docs_with_feat
 
 """
 @author Jack Ringer, Mike Adams
@@ -55,21 +56,74 @@ class NaiveBayes:
 
         all_classes = log_P_y + sum  # (# docs, label_size)
         return np.argmax(all_classes, axis=1) + 1
+    
+    def get_best_words(self, data: np.ndarray, n: int, vocab: list) -> list:
+        """
+        Grab the terms which influence the Naive Bayes classifier the most
+        using information gain.
+        :param data: np.ndarray, document BoW data of shape (# docs, vocab_size)
+        :param n: int, how many best terms to collect
+        :param vocab: list, a map from indices to words in the BoW model
+        :return topn_words: list, a list of size n containing strings of the
+            best n words.
+        """
+        num_docs_with_feat = get_num_docs_with_feat(data)
+        y_given_x = np.transpose(np.transpose(self.P_x_given_y) * self.P_y)
+        mean_y_given_x = np.mean(y_given_x, axis=1)
+        mean_entropy = entropy(mean_y_given_x)
+        weighted_feat_entropies = np.zeros((self.P_x_given_y.shape[1],))
+        for feat_i in range(self.P_x_given_y.shape[1]):
+            feat_vec = self.P_x_given_y[:, feat_i] * self.P_y
+            weighted_feat_entropies[feat_i] = entropy(feat_vec) * (num_docs_with_feat[feat_i] / data.shape[0])
+
+        info_gains = mean_entropy - weighted_feat_entropies
+        
+        topn = np.flip(np.argsort(info_gains))
+        topn_words = []
+        for i in range(n):
+            topn_words.append(vocab[topn[i]])
+        return topn_words
 
 if __name__ == "__main__":
+    import os
     import scipy.sparse as sparse
 
+    with open("../data/vocabulary.txt") as f:
+        vocab = f.read().splitlines()
+
     mat = sparse.load_npz("../data/sparse_training.npz").toarray()
+    split_r = 0.8  # 80% train, 20% val
+    cutoff = int(len(mat[:, 0]) * split_r)
+    np.random.seed(42)  # for reproducibility
+    np.random.shuffle(mat)
+    train_data, val_data = mat[0:cutoff], mat[cutoff:]
     lab_count = len(np.unique(mat[:, -1]))
     attr_count = mat.shape[1] - 2
-    nb = NaiveBayes(lab_count, attr_count, 1.0 + 0.0452)
-    nb.train(mat)
-    test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
-    nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)
-    output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
-    output[:, 0] = test_mat[:, 0]
-    output[:, 1] = nb_pred
-    np.savetxt("../data/nb_beta_0_0452_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
+    # betas = np.linspace(0.011138, 0.011145, 25)
+    betas = [0.011111]
+    for ib in betas:
+        nb = NaiveBayes(lab_count, attr_count, 1.0 + ib)
+        nb.train(mat)
+        test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
+        nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)
+        output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
+        output[:, 0] = test_mat[:, 0]
+        output[:, 1] = nb_pred
+        np.savetxt("../data/nb_beta_" + str(ib) + "_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
+
+        nb = NaiveBayes(lab_count, attr_count, 1.0 + ib)
+        nb.train(train_data)
+        val_pred = nb.classify(val_data)
+        from utils import get_confusion_matrix
+        c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
+
+        from plots import plot_confusion_matrix
+        os.makedirs("../figures", exist_ok=True)
+        save_path = "../figures/nb_" + str(ib) + "_conf_mat_seed42.png"
+        plot_confusion_matrix(c_mat, title="NB", save_pth=save_path)
+
+        topHundred = nb.get_best_words(train_data, 100, vocab)
+        print(topHundred)
 
     # # test acc
     # from utils import get_accuracy

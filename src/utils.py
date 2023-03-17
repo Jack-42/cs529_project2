@@ -62,6 +62,26 @@ def get_P_of_xi_given_yk(mat: np.ndarray, vocab_size: int, a: float):
     arr = numer / denom.reshape((-1, 1))
     return arr
 
+def entropy(probs: np.ndarray) -> float:
+    """
+    Estimate Shannon entropy for the given class distribution.
+    :param probs: np.ndarray, class distribution of size (label_size,)
+    :return ent: float, the entropy of the distribution
+    """
+    return -1.0 * np.sum(probs * np.log2(probs))
+        
+def get_num_docs_with_feat(data: np.ndarray) -> list:
+    """
+    Compute how many documents contain each word at least once.
+    :param data: np.ndarray, document BoW data of shape (# docs, vocab_size)
+    :return feats: list, feats[i] is how many times word i appears 
+        in a document at least once
+    """
+    feats = []
+    for i in range(data.shape[1]):
+        feats.append(np.nonzero(data[:, i])[0].shape[0])
+    return feats
+
 def get_standardization_mean_stddev(mat: np.ndarray) -> "tuple[np.ndarray, np.ndarray]":
     """
     Get mean and standard deviation of features using training examples.
