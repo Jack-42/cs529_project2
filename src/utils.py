@@ -73,11 +73,11 @@ def entropy(probs: np.ndarray) -> float:
     return -1.0 * np.sum(probs * np.log2(probs))
 
 
-def get_num_docs_with_feat(data: np.ndarray) -> list:
+def get_num_docs_with_feat(data: np.ndarray) -> np.ndarray:
     """
     Compute how many documents contain each word at least once.
     :param data: np.ndarray, document BoW data of shape (# docs, vocab_size)
-    :return feats: list, feats[i] is how many times word i appears 
+    :return feats: np.ndarray, feats[i] is how many times word i appears 
         in a document at least once
     """
     feats = np.count_nonzero(data, axis=0)
@@ -141,10 +141,17 @@ def get_confusion_matrix(predicted: np.ndarray,
     :return: c: np.ndarray, c[i, j] is the # of times an instance with class j
         was classified as category i.
     """
-    pred = predicted.reshape((predicted.shape[0],))
-    actu = actual.reshape((actual.shape[0],))
+    pred = np.zeros((predicted.shape[0],))
+    actu = np.zeros((actual.shape[0],))
+    # weird reshape + copy to handle arrays and matrices
+    pred_bad = predicted.reshape((-1, 1))
+    actu_bad = actual.reshape((-1, 1))
     assert pred.shape[0] == actu.shape[0]
-    n_classes = len(np.unique(pred))
+    for i in range(pred.shape[0]):
+        pred[i] = pred_bad[i, 0]
+        actu[i] = actu_bad[i, 0]
+                
+    n_classes = len(np.unique(actu))
     c = np.zeros((n_classes, n_classes), dtype=np.int64)
     for i in range(n_classes):
         for j in range(n_classes):

@@ -179,8 +179,8 @@ if __name__ == "__main__":
     from utils import get_standardization_mean_stddev, standardize_features
 
     # make unhandled numerical warnings obvious
-    import warnings
-    warnings.filterwarnings("error")
+    # import warnings
+    # warnings.filterwarnings("error")
 
     mat = sparse.load_npz("../data/sparse_training.npz")
     arrmat = mat.toarray()
@@ -201,17 +201,33 @@ if __name__ == "__main__":
     lab_count = len(np.unique(arrmat[:, -1]))
     attr_count = mat.shape[1] - 2
     n_entries = mat.shape[0]
-    log_reg = LogReg(k=lab_count, n=attr_count, lr=0.0001, lam=0.0001)
+    log_reg = LogReg(k=lab_count, n=attr_count, lr=0.001, lam=0.001)
     import time
     t = time.perf_counter()
     log_reg.train(67, train_data, val_data=val_data, minibatch_size=None)
-    log_reg.lr = 0.0000001
-    log_reg.train(10000, train_data, val_data=val_data, minibatch_size=9000)
+    # log_reg.lr = 0.0000001
+    # log_reg.train(10000, train_data, val_data=val_data, minibatch_size=9000)
     print("Time %f" %(time.perf_counter() - t))
-    test_mat = sparse.load_npz("../data/sparse_testing.npz").tolil()
-    test_mat[:, 1:] = standardize_features(test_mat[:, 1:], means, devs)
-    lr_pred = log_reg.classify(test_mat, id_in_mat=True, class_in_mat=False)
-    output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
-    output[:, 0] = test_mat[:, 0].toarray().reshape((test_mat.shape[0],))
-    output[:, 1] = lr_pred.reshape((lr_pred.shape[0],))
-    np.savetxt("../data/lr_basic_test_out_0001_0001_67_10000_80_20_earlyhalt_Whole_thenminibatchsize9000_lr0000001.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
+    
+    val_pred = log_reg.classify(val_data, id_in_mat=True, class_in_mat=True)
+
+    from utils import get_confusion_matrix
+    c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
+    print(c_mat)
+
+    from plots import plot_confusion_matrix
+    import os
+    os.makedirs("../figures", exist_ok=True)
+    save_path = "../figures/lr_001_001_conf_mat_seed42.png"
+    plot_confusion_matrix(c_mat, title="LR", save_pth=save_path)
+
+    from utils import get_accuracy
+    print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))
+
+    # test_mat = sparse.load_npz("../data/sparse_testing.npz").tolil()
+    # test_mat[:, 1:] = standardize_features(test_mat[:, 1:], means, devs)
+    # lr_pred = log_reg.classify(test_mat, id_in_mat=True, class_in_mat=False)
+    # output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
+    # output[:, 0] = test_mat[:, 0].toarray().reshape((test_mat.shape[0],))
+    # output[:, 1] = lr_pred.reshape((lr_pred.shape[0],))
+    # np.savetxt("../data/lr_basic_test_out_0001_0001_67_10000_80_20_earlyhalt_Whole_thenminibatchsize9000_lr0000001.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
