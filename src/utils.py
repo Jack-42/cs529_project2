@@ -12,7 +12,8 @@ Description:
 def get_y_priors(mat: np.ndarray):
     """
     Get P(y_k) for all y_k in Y (set of all labels)
-    :param mat: 2D sparse matrix, labels expected in last column. rows are entries
+    :param mat: 2D sparse matrix, labels expected in last column. rows are
+                entries
     :return: arr (np.ndarray) where arr[i-1] = P(y_i), shape (label_size,)
     """
     label_counts = np.unique(mat[:, -1], return_counts=True)
@@ -62,6 +63,7 @@ def get_P_of_xi_given_yk(mat: np.ndarray, vocab_size: int, a: float):
     arr = numer / denom.reshape((-1, 1))
     return arr
 
+
 def entropy(probs: np.ndarray) -> float:
     """
     Estimate Shannon entropy for the given class distribution.
@@ -69,7 +71,8 @@ def entropy(probs: np.ndarray) -> float:
     :return ent: float, the entropy of the distribution
     """
     return -1.0 * np.sum(probs * np.log2(probs))
-        
+
+
 def get_num_docs_with_feat(data: np.ndarray) -> list:
     """
     Compute how many documents contain each word at least once.
@@ -77,12 +80,12 @@ def get_num_docs_with_feat(data: np.ndarray) -> list:
     :return feats: list, feats[i] is how many times word i appears 
         in a document at least once
     """
-    feats = []
-    for i in range(data.shape[1]):
-        feats.append(np.nonzero(data[:, i])[0].shape[0])
+    feats = np.count_nonzero(data, axis=0)
     return feats
 
-def get_standardization_mean_stddev(mat: np.ndarray) -> "tuple[np.ndarray, np.ndarray]":
+
+def get_standardization_mean_stddev(
+        mat: np.ndarray) -> "tuple[np.ndarray, np.ndarray]":
     """
     Get mean and standard deviation of features using training examples.
     :param mat: np.ndarray, rows are examples, columns are features
@@ -95,21 +98,25 @@ def get_standardization_mean_stddev(mat: np.ndarray) -> "tuple[np.ndarray, np.nd
     tup = means, devs
     return tup
 
-def standardize_features(mat: np.ndarray, means: np.ndarray, devs: np.ndarray) -> np.ndarray:
+
+def standardize_features(mat: np.ndarray, means: np.ndarray,
+                         devs: np.ndarray) -> np.ndarray:
     """
     Standardize features such that each has mean 0 and standard deviation 1.
     :param mat: np.ndarray, rows are examples, columns are features
         (assume no id or class columns)
     :param means: np.ndarray, the mean of every feature given the mat data
-    :param devs: np.ndarray, the standard deviation of every feature given the mat data
+    :param devs: np.ndarray, the standard deviation of every feature given the
+                 mat data
     :return out: np.ndarray, new mat with standardized features
     """
     with np.errstate(divide='ignore', invalid='ignore'):
         out = (mat - means) / devs
-    
+
     # handle devs close to 0
     out = np.nan_to_num(out)
     return out
+
 
 def get_accuracy(predicted: np.ndarray, actual: np.ndarray) -> float:
     """
@@ -124,7 +131,9 @@ def get_accuracy(predicted: np.ndarray, actual: np.ndarray) -> float:
     total = actual.shape[0]
     return n_correct / total
 
-def get_confusion_matrix(predicted: np.ndarray, actual: np.ndarray) -> np.ndarray:
+
+def get_confusion_matrix(predicted: np.ndarray,
+                         actual: np.ndarray) -> np.ndarray:
     """
     Get confusion matrix of predictions to visualize errors
     :param predicted: np.ndarray, predicted values
@@ -146,21 +155,15 @@ def get_confusion_matrix(predicted: np.ndarray, actual: np.ndarray) -> np.ndarra
             c[i, j] = withi[0].shape[0]
     return c
 
+
 if __name__ == "__main__":
-    # mat1 = sparse.load_npz("../data/sparse_training.npz").toarray()
-    # print(mat1.shape)
-    # print(mat1[0][0])
-    mat1 = np.random.randint(0, 5, size=(5, 5))
-    mat1[:, -1] = np.arange(0, 5, 1, dtype=np.int32)
-    mat1[3, -1] = 1
-    print(mat1)
-    mat2 = np.random.randint(0, 5, size=(5, 5))
-    mat2[:, -1] = np.arange(0, 5, 1, dtype=np.int32)
-    mat2[4, -1] = 1
-    print(mat2)
-    acc = get_accuracy(mat1[:, -1], mat2[:, -1])
-    print(acc)
     mat2 = sparse.load_npz("../data/sparse_training.npz").toarray()
-    means, devs = get_standardization_mean_stddev(mat2[:, 1:-1])
-    std_mat2 = standardize_features(mat2[:, 1:-1], means, devs)
-    print(std_mat2[550:660, :6])
+    print("done")
+    fs = get_num_docs_with_feat(mat2[:, 1:-1])
+    print(fs)
+    print(len(fs))
+    with open("../data/vocabulary.txt") as f:
+        vocab = f.read().splitlines()
+    vocab_freqs = dict(zip(vocab, fs))
+    sorted_freqs = sorted(vocab_freqs.items(), key=lambda x: x[1])
+    print(sorted_freqs)
