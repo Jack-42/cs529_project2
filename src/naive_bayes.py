@@ -1,7 +1,8 @@
 import numpy as np
+from tqdm import tqdm
 
 from utils import get_y_priors, get_P_of_xi_given_yk
-from utils import entropy, get_num_docs_with_feat
+from utils import get_num_docs_with_feat, kl_divergence
 
 """
 @author Jack Ringer, Mike Adams
@@ -9,6 +10,7 @@ Date: 2/26/2023
 Description:
     Class for training and classifying using the Naive Bayes model
 """
+
 
 class NaiveBayes:
     def __init__(self, k: int, n: int, a: float):
@@ -29,9 +31,11 @@ class NaiveBayes:
         :param mat: np.ndarray, rows are entries. labels expected in last column
         """
         self.P_y = get_y_priors(mat)  # shape (label_size,)
-        self.P_x_given_y = get_P_of_xi_given_yk(mat, self.n, self.a)  # (label_size x vocab_size)
+        self.P_x_given_y = get_P_of_xi_given_yk(mat, self.n,
+                                                self.a)  # (label_size x vocab_size)
 
-    def classify(self, mat: np.ndarray, id_in_mat=True, class_in_mat=True) -> np.ndarray:
+    def classify(self, mat: np.ndarray, id_in_mat=True,
+                 class_in_mat=True) -> np.ndarray:
         """
         Evaluate model on given documents.
         :param mat: np.ndarray, rows are entries. labels expected in last column
@@ -45,44 +49,45 @@ class NaiveBayes:
         log_P_x_given_y = np.log2(self.P_x_given_y)
 
         # mat.shape is (# docs, vocab_size)
-        log_P_x_given_y_t = np.transpose(log_P_x_given_y)  # (vocab_size x label_size)
+        log_P_x_given_y_t = np.transpose(
+            log_P_x_given_y)  # (vocab_size x label_size)
         start = 0
         if id_in_mat:
             start = 1
         end = mat.shape[1]
         if class_in_mat:
             end = -1
-        sum = np.matmul(mat[:, start:end], log_P_x_given_y_t)  # (# docs, label_size)
+        sum = np.matmul(mat[:, start:end],
+                        log_P_x_given_y_t)  # (# docs, label_size)
 
         all_classes = log_P_y + sum  # (# docs, label_size)
         return np.argmax(all_classes, axis=1) + 1
-    
-    def get_best_words(self, data: np.ndarray, n: int, vocab: list) -> list:
+
+    def get_best_words(self, n: int, vocab: list):
         """
         Grab the terms which influence the Naive Bayes classifier the most
         using information gain.
-        :param data: np.ndarray, document BoW data of shape (# docs, vocab_size)
         :param n: int, how many best terms to collect
         :param vocab: list, a map from indices to words in the BoW model
         :return topn_words: list, a list of size n containing strings of the
             best n words.
         """
-        num_docs_with_feat = get_num_docs_with_feat(data)
-        y_given_x = np.transpose(np.transpose(self.P_x_given_y) * self.P_y)
-        mean_y_given_x = np.mean(y_given_x, axis=1)
-        mean_entropy = entropy(mean_y_given_x)
-        weighted_feat_entropies = np.zeros((self.P_x_given_y.shape[1],))
-        for feat_i in range(self.P_x_given_y.shape[1]):
-            feat_vec = self.P_x_given_y[:, feat_i] * self.P_y
-            weighted_feat_entropies[feat_i] = entropy(feat_vec) * (num_docs_with_feat[feat_i] / data.shape[0])
+        assert len(vocab) == self.P_x_given_y.shape[1]
+        kl_divs = np.zeros((self.k, self.n))
+        for y in tqdm(range(self.k)):
+            for x in range(self.n):
+                other_y = np.sum(self.P_x_given_y[:, x]) - self.P_x_given_y[
+                    y, x]
+                kl_divs[y][x] = kl_divergence(
+                    self.P_x_given_y[y, x],
+                    other_y)
+        kl_divs = np.amax(kl_divs, axis=0)
+        topn_is = np.flip(np.argsort(kl_divs))[0:n]
+        topn = list(map(lambda i: vocab[i], topn_is))
+        freqs = get_num_docs_with_feat(train_data[:, 1:-1])
+        topn_freqs = list(map(lambda i: freqs[i], topn_is))
+        return topn, topn_freqs
 
-        info_gains = mean_entropy - weighted_feat_entropies
-        
-        topn = np.flip(np.argsort(info_gains))
-        topn_words = []
-        for i in range(n):
-            topn_words.append(vocab[topn[i]])
-        return topn_words
 
 if __name__ == "__main__":
     import os
@@ -103,27 +108,10 @@ if __name__ == "__main__":
     betas = [0.011111]
     for ib in betas:
         nb = NaiveBayes(lab_count, attr_count, 1.0 + ib)
-        nb.train(mat)
-        test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
-        nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)
-        output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
-        output[:, 0] = test_mat[:, 0]
-        output[:, 1] = nb_pred
-        np.savetxt("../data/nb_beta_" + str(ib) + "_test_out.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
-
-        nb = NaiveBayes(lab_count, attr_count, 1.0 + ib)
         nb.train(train_data)
-        val_pred = nb.classify(val_data)
-        from utils import get_confusion_matrix
-        c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
-
-        from plots import plot_confusion_matrix
-        os.makedirs("../figures", exist_ok=True)
-        save_path = "../figures/nb_" + str(ib) + "_conf_mat_seed42.png"
-        plot_confusion_matrix(c_mat, title="NB", save_pth=save_path)
-
-        topHundred = nb.get_best_words(train_data, 100, vocab)
+        topHundred, freqs = nb.get_best_words(100, vocab)
         print(topHundred)
+        print(freqs)
 
     # # test acc
     # from utils import get_accuracy

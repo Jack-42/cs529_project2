@@ -64,6 +64,18 @@ def get_P_of_xi_given_yk(mat: np.ndarray, vocab_size: int, a: float):
     return arr
 
 
+def kl_divergence(p: float, q: float, eps=0.000000001):
+    """
+    Calculate the Kullback–Leibler divergence between two probabilities.
+    Will be large if p >> q.
+    :param p: float, first probability
+    :param q: float, second probability
+    :param eps: float (optional), small value to prevent divide-by-zero
+    :return: float, the KL diverge between p and q
+    """
+    return p * np.log2((p + eps) / (q + eps))
+
+
 def entropy(probs: np.ndarray) -> float:
     """
     Estimate Shannon entropy for the given class distribution.
@@ -150,7 +162,7 @@ def get_confusion_matrix(predicted: np.ndarray,
     for i in range(pred.shape[0]):
         pred[i] = pred_bad[i, 0]
         actu[i] = actu_bad[i, 0]
-                
+
     n_classes = len(np.unique(actu))
     c = np.zeros((n_classes, n_classes), dtype=np.int64)
     for i in range(n_classes):
