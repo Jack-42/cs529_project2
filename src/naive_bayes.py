@@ -1,8 +1,8 @@
 import numpy as np
 from tqdm import tqdm
 
-from utils import get_y_priors, get_P_of_xi_given_yk
 from utils import get_num_docs_with_feat, kl_divergence
+from utils import get_y_priors, get_P_of_xi_given_yk
 
 """
 @author Jack Ringer, Mike Adams
@@ -63,34 +63,44 @@ class NaiveBayes:
         all_classes = log_P_y + sum  # (# docs, label_size)
         return np.argmax(all_classes, axis=1) + 1
 
-    def get_best_words(self, n: int, vocab: list):
+    def get_best_words(self, data: np.ndarray, n: int, vocab: list):
         """
         Grab the terms which influence the Naive Bayes classifier the most
         using information gain.
+        :param data: np.ndarray, rows are entries. first and last col expected
+                     to be ids and labels, respectively
         :param n: int, how many best terms to collect
         :param vocab: list, a map from indices to words in the BoW model
         :return topn_words: list, a list of size n containing strings of the
             best n words.
         """
+
+        def _calc_entry(x: int, y: int):
+            other_pxgy = np.setdiff1d(self.P_x_given_y[:, x],
+                                      self.P_x_given_y[y, x])
+            pxgy = self.P_x_given_y[y, x]
+            return np.sum(kl_divs_vect(pxgy, other_pxgy)) * self.P_y[y]
+
         assert len(vocab) == self.P_x_given_y.shape[1]
         kl_divs = np.zeros((self.k, self.n))
         kl_divs_vect = np.vectorize(kl_divergence)
-        for y in tqdm(range(self.k)):
-            for x in range(self.n):
-                other_pxgy = np.setdiff1d(self.P_x_given_y[:, x],
-                                          self.P_x_given_y[y, x])
-                pxgy = self.P_x_given_y[y, x]
-                kl_divs[y][x] = np.sum(kl_divs_vect(pxgy, other_pxgy))
+        entry_vect = np.vectorize(_calc_entry)
+        x_vals = np.arange(0, self.n)
+        for label in tqdm(range(self.k)):
+            kl_divs[label, :] = entry_vect(x_vals, label)
         kl_divs = np.amax(kl_divs, axis=0)
         topn_is = np.flip(np.argsort(kl_divs))[0:n]
         topn = list(map(lambda i: vocab[i], topn_is))
-        freqs = get_num_docs_with_feat(train_data[:, 1:-1])
+        freqs = get_num_docs_with_feat(data[:, 1:-1])
         topn_freqs = list(map(lambda i: freqs[i], topn_is))
         return topn, topn_freqs
 
 
-if __name__ == "__main__":
-    import os
+def q7_main():
+    """
+    Main for answering question 7 of the report
+    :return: None
+    """
     import scipy.sparse as sparse
 
     with open("../data/vocabulary.txt") as f:
@@ -104,53 +114,19 @@ if __name__ == "__main__":
     train_data, val_data = mat[0:cutoff], mat[cutoff:]
     lab_count = len(np.unique(mat[:, -1]))
     attr_count = mat.shape[1] - 2
-    # betas = np.linspace(0.011138, 0.011145, 25)
-    betas = [0.011111]
-    for ib in betas:
-        nb = NaiveBayes(lab_count, attr_count, 1.0 + ib)
-        nb.train(train_data)
-        topHundred, freqs = nb.get_best_words(100, vocab)
-        print(topHundred)
-        print(freqs)
+    beta = 1 / attr_count
+    nb = NaiveBayes(lab_count, attr_count, 1.0 + beta)
+    nb.train(train_data)
+    top_100_words, top_100_freqs = nb.get_best_words(train_data, 100, vocab)
+    print(top_100_words)
+    print(top_100_freqs)
 
-    # # test acc
-    # from utils import get_accuracy
-    # nb_pred_train = nb.classify(mat[:, 1:-1], id_in_mat=False, class_in_mat=False)
-    # print("train acc: ", get_accuracy(nb_pred_train, mat[:, -1]))
+    np.save("../results/nb_top_100_words.npy", {"words": top_100_words,
+                                                "freqs": top_100_freqs})
 
-    # data = sparse.load_npz("../data/sparse_training.npz").toarray()
 
-    # label_count = len(np.unique(data[:, -1]))
-    # attr_count = data.shape[1] - 2
-
-    # # split into train/val
-    # split_r = 0.8  # 80% train, 20% val
-    # cutoff = int(len(data[:, 0]) * split_r)
-    # np.random.seed(12)  # for reproducibility
-    # np.random.shuffle(data)
-    # train_data, val_data = data[0:cutoff], data[cutoff:]
-
-    # nb = NaiveBayes(label_count, attr_count, 1.0 + 0.090918)
-    # nb.train(train_data)
-    # train_pred = nb.classify(train_data, id_in_mat=True, class_in_mat=True)
-    # val_pred = nb.classify(val_data, id_in_mat=True, class_in_mat=True)
-
-    # from utils import get_confusion_matrix
-    # c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
-    # print(c_mat)
-
-    # from plots import plot_confusion_matrix
-    # import os
-    # os.makedirs("../figures", exist_ok=True)
-    # save_path = "../figures/nb_090918_conf_mat_seed12.png"
-    # plot_confusion_matrix(c_mat, title="NB", save_pth=save_path)
-
-    # from utils import get_accuracy
-    # print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))
-
-    # test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
-    # nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)
-    # output = np.zeros((test_mat.shape[0], 2), dtype=np.int64)
-    # output[:, 0] = test_mat[:, 0]
-    # output[:, 1] = nb_pred
-    # np.savetxt("../data/nb_beta_0_090918_test_out_seed12_train8020.csv", output, fmt="%d", delimiter=",", header="id,class", comments="")
+if __name__ == "__main__":
+    # q7_main()
+    d = np.load("../results/nb_top_100_words.npy", allow_pickle=True).item()
+    print(d['words'])
+    print(d['freqs'])
