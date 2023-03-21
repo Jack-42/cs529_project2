@@ -74,13 +74,13 @@ class NaiveBayes:
         """
         assert len(vocab) == self.P_x_given_y.shape[1]
         kl_divs = np.zeros((self.k, self.n))
+        kl_divs_vect = np.vectorize(kl_divergence)
         for y in tqdm(range(self.k)):
             for x in range(self.n):
-                other_y = np.sum(self.P_x_given_y[:, x]) - self.P_x_given_y[
-                    y, x]
-                kl_divs[y][x] = kl_divergence(
-                    self.P_x_given_y[y, x],
-                    other_y)
+                other_pxgy = np.setdiff1d(self.P_x_given_y[:, x],
+                                          self.P_x_given_y[y, x])
+                pxgy = self.P_x_given_y[y, x]
+                kl_divs[y][x] = np.sum(kl_divs_vect(pxgy, other_pxgy))
         kl_divs = np.amax(kl_divs, axis=0)
         topn_is = np.flip(np.argsort(kl_divs))[0:n]
         topn = list(map(lambda i: vocab[i], topn_is))
