@@ -33,6 +33,7 @@ class NaiveBayes:
         self.P_y = get_y_priors(mat)  # shape (label_size,)
         self.P_x_given_y = get_P_of_xi_given_yk(mat, self.n,
                                                 self.a)  # (label_size x vocab_size)
+        self.train_data = mat
 
     def classify(self, mat: np.ndarray, id_in_mat=True,
                  class_in_mat=True) -> np.ndarray:
@@ -66,7 +67,7 @@ class NaiveBayes:
     def get_best_words(self, n: int, vocab: list):
         """
         Grab the terms which influence the Naive Bayes classifier the most
-        using information gain.
+        using KL divergence.
         :param n: int, how many best terms to collect
         :param vocab: list, a map from indices to words in the BoW model
         :return topn_words: list, a list of size n containing strings of the
@@ -84,7 +85,7 @@ class NaiveBayes:
         kl_divs = np.amax(kl_divs, axis=0)
         topn_is = np.flip(np.argsort(kl_divs))[0:n]
         topn = list(map(lambda i: vocab[i], topn_is))
-        freqs = get_num_docs_with_feat(train_data[:, 1:-1])
+        freqs = get_num_docs_with_feat(self.train_data[:, 1:-1])
         topn_freqs = list(map(lambda i: freqs[i], topn_is))
         return topn, topn_freqs
 
@@ -113,7 +114,7 @@ if __name__ == "__main__":
         print(topHundred)
         print(freqs)
 
-    # # test acc
+    # test acc
     # from utils import get_accuracy
     # nb_pred_train = nb.classify(mat[:, 1:-1], id_in_mat=False, class_in_mat=False)
     # print("train acc: ", get_accuracy(nb_pred_train, mat[:, -1]))
@@ -133,7 +134,7 @@ if __name__ == "__main__":
     # nb = NaiveBayes(label_count, attr_count, 1.0 + 0.090918)
     # nb.train(train_data)
     # train_pred = nb.classify(train_data, id_in_mat=True, class_in_mat=True)
-    # val_pred = nb.classify(val_data, id_in_mat=True, class_in_mat=True)
+    val_pred = nb.classify(val_data, id_in_mat=True, class_in_mat=True)
 
     # from utils import get_confusion_matrix
     # c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
@@ -145,8 +146,8 @@ if __name__ == "__main__":
     # save_path = "../figures/nb_090918_conf_mat_seed12.png"
     # plot_confusion_matrix(c_mat, title="NB", save_pth=save_path)
 
-    # from utils import get_accuracy
-    # print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))
+    from utils import get_accuracy
+    print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))
 
     # test_mat = sparse.load_npz("../data/sparse_testing.npz").toarray()
     # nb_pred = nb.classify(test_mat, id_in_mat=True, class_in_mat=False)

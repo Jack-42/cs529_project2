@@ -76,15 +76,6 @@ def kl_divergence(p: float, q: float, eps=0.000000001):
     return p * np.log2((p + eps) / (q + eps))
 
 
-def entropy(probs: np.ndarray) -> float:
-    """
-    Estimate Shannon entropy for the given class distribution.
-    :param probs: np.ndarray, class distribution of size (label_size,)
-    :return ent: float, the entropy of the distribution
-    """
-    return -1.0 * np.sum(probs * np.log2(probs))
-
-
 def get_num_docs_with_feat(data: np.ndarray) -> np.ndarray:
     """
     Compute how many documents contain each word at least once.
