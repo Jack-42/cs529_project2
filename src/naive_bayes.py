@@ -102,6 +102,7 @@ def q7_main():
     :return: None
     """
     import scipy.sparse as sparse
+    from utils import get_accuracy
 
     with open("../data/vocabulary.txt") as f:
         vocab = f.read().splitlines()
@@ -118,9 +119,10 @@ def q7_main():
     nb = NaiveBayes(lab_count, attr_count, 1.0 + beta)
     nb.train(train_data)
     top_100_words, top_100_freqs = nb.get_best_words(train_data, 100, vocab)
+    val_pred = nb.classify(val_data, id_in_mat=True, class_in_mat=True)
+    print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))
     print(top_100_words)
     print(top_100_freqs)
-
     np.save("../results/nb_top_100_words.npy", {"words": top_100_words,
                                                 "freqs": top_100_freqs})
 
