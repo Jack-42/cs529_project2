@@ -5,12 +5,84 @@ Description:
     Contains code used to answer miscellaneous questions from the report.
 """
 
+import os
+
 import numpy as np
 import scipy.sparse as sparse
 import matplotlib.pyplot as plt
 
 from naive_bayes import NaiveBayes
+from logistic_regression import LogReg
 from utils import get_accuracy, get_num_docs_with_feat
+from utils import get_standardization_mean_stddev, standardize_features
+from utils import get_confusion_matrix
+from plots import plot_confusion_matrix
+
+def q4_main_nb():
+    """
+    Main for answering question 4 of the report using Naive Bayes
+    :return: None
+    """
+    mat = sparse.load_npz("../data/sparse_training.npz").toarray()
+    split_r = 0.8  # 80% train, 20% val
+    cutoff = int(len(mat[:, 0]) * split_r)
+    np.random.seed(42)  # for reproducibility
+    np.random.shuffle(mat)
+    train_data, val_data = mat[0:cutoff], mat[cutoff:]
+    lab_count = len(np.unique(mat[:, -1]))
+    attr_count = mat.shape[1] - 2
+    # betas = np.linspace(0.011138, 0.011145, 25)
+    betas = [0.011111]
+    for ib in betas:
+        nb = NaiveBayes(lab_count, attr_count, 1.0 + ib)
+        nb.train(train_data)
+    val_pred = nb.classify(val_data, id_in_mat=True, class_in_mat=True)
+
+    c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
+
+    os.makedirs("../figures", exist_ok=True)
+    save_path = "../figures/nb_011111_conf_mat_seed42.png"
+    plot_confusion_matrix(c_mat, title="NB", save_pth=save_path)
+
+    print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))
+
+
+def q4_main_lr():
+    """
+    Main for answering question 4 of the report using logistic regression
+    :return: None
+    """
+    mat = sparse.load_npz("../data/sparse_training.npz")
+    arrmat = mat.toarray()
+    # split into train/val
+    split_r = 0.8  # 80% train, 20% val
+    cutoff = int(len(arrmat[:, 0]) * split_r)
+    np.random.seed(42)  # for reproducibility
+    np.random.shuffle(arrmat)
+    train_data, val_data = arrmat[0:cutoff], arrmat[cutoff:]
+    
+    means, devs = get_standardization_mean_stddev(train_data[:, 1:-1])
+    train_data[:, 1:-1] = standardize_features(train_data[:, 1:-1], means, devs)
+    val_data[:, 1:-1] = standardize_features(val_data[:, 1:-1], means, devs)
+
+    # sparsify
+    train_data, val_data = sparse.lil_matrix(train_data), sparse.lil_matrix(val_data)
+
+    lab_count = len(np.unique(arrmat[:, -1]))
+    attr_count = mat.shape[1] - 2
+    log_reg = LogReg(k=lab_count, n=attr_count, lr=0.001, lam=0.001)
+    log_reg.train(67, train_data, val_data=val_data, minibatch_size=None)
+    
+    val_pred = log_reg.classify(val_data, id_in_mat=True, class_in_mat=True)
+
+    c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
+
+    os.makedirs("../figures", exist_ok=True)
+    save_path = "../figures/lr_001_001_conf_mat_seed42.png"
+    plot_confusion_matrix(c_mat, title="LR", save_pth=save_path)
+
+    from utils import get_accuracy
+    print("val acc: ", get_accuracy(val_pred, val_data[:, -1]))
 
 
 def q7_main():
@@ -101,4 +173,4 @@ def q8_main():
 
 
 if __name__ == "__main__":
-    q8_main()
+    q4_main_lr()

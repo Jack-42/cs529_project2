@@ -68,8 +68,9 @@ def plot_confusion_matrix(c: np.ndarray, title: str = None, save_pth: str = None
     :param save_pth: str (optional), path to save figure to
     :return: None
     """
-    plt.figure(figsize=(6, 6))
+    plt.figure(figsize=(8, 8))
     plt.imshow(c, cmap="hot", interpolation="nearest")
+    plt.colorbar()
     if title is not None:
         plt.title(title)
     plt.gca().xaxis.set_ticks_position("top")
