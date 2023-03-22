@@ -7,9 +7,10 @@ Description:
 
 import numpy as np
 import scipy.sparse as sparse
+import matplotlib.pyplot as plt
 
 from naive_bayes import NaiveBayes
-from utils import get_accuracy
+from utils import get_accuracy, get_num_docs_with_feat
 
 
 def q7_main():
@@ -40,8 +41,64 @@ def q7_main():
                                                 "freqs": top_100_freqs})
 
 
+def q8_main():
+    """
+    Main for answering question 8 of the report.
+    :return: None
+    """
+    with open("../data/vocabulary.txt") as f:
+        vocab = f.read().splitlines()
+
+    # load train/val data
+    mat = sparse.load_npz("../data/sparse_training.npz").toarray()
+    split_r = 0.8  # 80% train, 20% val
+    cutoff = int(len(mat[:, 0]) * split_r)
+    np.random.seed(42)  # for reproducibility
+    np.random.shuffle(mat)
+    train_data, val_data = mat[0:cutoff], mat[cutoff:]
+
+    # load top 100 words from NB (trained on train_data)
+    top_100_train = np.load("../results/nb_top_100_words.npy",
+                            allow_pickle=True).item()
+    top_100_words = top_100_train['words']
+    train_freqs = np.array(top_100_train['freqs']) / len(train_data)
+    top_100_indices = list(map(lambda s: vocab.index(s), top_100_words))
+
+    # compare frequencies from training data to val data
+    val_freqs = get_num_docs_with_feat(val_data[:, 1:-1])  # exclude id, label
+    val_freqs = val_freqs[top_100_indices] / len(val_data)
+
+    test_data = sparse.load_npz("../data/sparse_testing.npz").toarray()
+    test_freqs = get_num_docs_with_feat(test_data[:, 1:])  # exxlude id
+    test_freqs = test_freqs[top_100_indices] / len(test_data)
+
+    # compare prob differences
+
+    # create plot
+    fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(16, 6), sharey='row')
+    axs[0].hist(train_freqs,
+                bins=np.logspace(start=np.log10(10 ** -4),
+                                 stop=np.log10(1), num=10))
+    axs[0].set_title("Train Data")
+    axs[0].set_ylabel("Count")
+    axs[0].set_xlabel("Bin for log(P(X))")
+
+    axs[1].set_title("Validation Data")
+    axs[1].set_xlabel("Bin for log(P(X))")
+    axs[1].hist(val_freqs,
+                bins=np.logspace(start=np.log10(10 ** -4),
+                                 stop=np.log10(1), num=10))
+
+    axs[2].hist(test_freqs,
+                bins=np.logspace(start=np.log10(10 ** -4),
+                                 stop=np.log10(1), num=10))
+    axs[2].set_title("Test Data")
+    axs[2].set_xlabel("Bin for log(P(X))")
+    for ax in axs:
+        ax.set_xscale('log')
+    plt.savefig("../figures/q8_fig.png", dpi=300)
+    plt.show()
+
+
 if __name__ == "__main__":
-    # q7_main()
-    d = np.load("../results/nb_top_100_words.npy", allow_pickle=True).item()
-    print(d['words'])
-    print(d['freqs'])
+    q8_main()
