@@ -173,4 +173,6 @@ def q8_main():
 
 
 if __name__ == "__main__":
+    os.makedirs("../results", exist_ok=True)
+    os.makedirs("../figures", exist_ok=True)
     q4_main_lr()
