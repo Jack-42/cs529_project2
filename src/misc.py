@@ -15,8 +15,9 @@ from naive_bayes import NaiveBayes
 from logistic_regression import LogReg
 from utils import get_accuracy, get_num_docs_with_feat
 from utils import get_standardization_mean_stddev, standardize_features
-from utils import get_confusion_matrix
+from utils import get_confusion_matrix, inc_plot_font_size
 from plots import plot_confusion_matrix
+
 
 def q4_main_nb():
     """
@@ -32,10 +33,9 @@ def q4_main_nb():
     lab_count = len(np.unique(mat[:, -1]))
     attr_count = mat.shape[1] - 2
     # betas = np.linspace(0.011138, 0.011145, 25)
-    betas = [0.011111]
-    for ib in betas:
-        nb = NaiveBayes(lab_count, attr_count, 1.0 + ib)
-        nb.train(train_data)
+    beta = 0.011111
+    nb = NaiveBayes(lab_count, attr_count, 1.0 + beta)
+    nb.train(train_data)
     val_pred = nb.classify(val_data, id_in_mat=True, class_in_mat=True)
 
     c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
@@ -60,19 +60,20 @@ def q4_main_lr():
     np.random.seed(42)  # for reproducibility
     np.random.shuffle(arrmat)
     train_data, val_data = arrmat[0:cutoff], arrmat[cutoff:]
-    
+
     means, devs = get_standardization_mean_stddev(train_data[:, 1:-1])
     train_data[:, 1:-1] = standardize_features(train_data[:, 1:-1], means, devs)
     val_data[:, 1:-1] = standardize_features(val_data[:, 1:-1], means, devs)
 
     # sparsify
-    train_data, val_data = sparse.lil_matrix(train_data), sparse.lil_matrix(val_data)
+    train_data, val_data = sparse.lil_matrix(train_data), sparse.lil_matrix(
+        val_data)
 
     lab_count = len(np.unique(arrmat[:, -1]))
     attr_count = mat.shape[1] - 2
     log_reg = LogReg(k=lab_count, n=attr_count, lr=0.001, lam=0.001)
     log_reg.train(67, train_data, val_data=val_data, minibatch_size=None)
-    
+
     val_pred = log_reg.classify(val_data, id_in_mat=True, class_in_mat=True)
 
     c_mat = get_confusion_matrix(val_pred, val_data[:, -1])
@@ -147,6 +148,7 @@ def q8_main():
     # compare prob differences
 
     # create plot
+    inc_plot_font_size()
     fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(16, 6), sharey='row')
     axs[0].hist(train_freqs,
                 bins=np.logspace(start=np.log10(10 ** -4),
@@ -173,6 +175,4 @@ def q8_main():
 
 
 if __name__ == "__main__":
-    os.makedirs("../results", exist_ok=True)
-    os.makedirs("../figures", exist_ok=True)
-    q4_main_lr()
+    q8_main()

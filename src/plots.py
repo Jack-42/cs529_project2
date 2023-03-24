@@ -1,8 +1,8 @@
-import os
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+from utils import inc_plot_font_size
 
 """
 @author Jack Ringer, Mike Adams
@@ -39,18 +39,22 @@ def plot_lr_gridsearch(results_csv_path: str, save_pth: str = None):
     :param save_pth: str (optional), path to save figure to
     :return: None
     """
+    inc_plot_font_size()
     results = pd.read_csv(results_csv_path, index_col=0)
     keys = ["eta", "lambda", "n_iter"]
     xlabels = {"eta": '\u03B7', "lambda": '\u03BB', "n_iter": "num. iterations"}
-    fig, axs = plt.subplots(nrows=1, ncols=len(keys), figsize=(16, 6), sharey='row')
+    fig, axs = plt.subplots(nrows=1, ncols=len(keys), figsize=(16, 6),
+                            sharey='row')
     axs[0].set_ylabel('Accuracy')
     for i in range(len(keys)):
         key = keys[i]
         ax = axs[i]
         results_avg = results.groupby(key).mean()
         ax.set_xscale('log')
-        ax.plot(results_avg.index, results_avg['train_acc'], label='training accuracy')
-        ax.plot(results_avg.index, results_avg['val_acc'], label='validation accuracy')
+        ax.plot(results_avg.index, results_avg['train_acc'],
+                label='training accuracy')
+        ax.plot(results_avg.index, results_avg['val_acc'],
+                label='validation accuracy')
         ax.legend()
         # ax.title('LR accuracy for different values of \u03B7')
         ax.set_xlabel(xlabels[key])
@@ -59,7 +63,8 @@ def plot_lr_gridsearch(results_csv_path: str, save_pth: str = None):
     plt.show()
 
 
-def plot_confusion_matrix(c: np.ndarray, title: str = None, save_pth: str = None):
+def plot_confusion_matrix(c: np.ndarray, title: str = None,
+                          save_pth: str = None):
     """
     Plot the heatmap for a confusion matrix
     :param c: np.ndarray, c[i, j] is the # of times an instance with class j
@@ -96,5 +101,5 @@ if __name__ == "__main__":
     import os
 
     os.makedirs("../figures", exist_ok=True)
-    save_path = "../figures/nb_beta_acc.png"
-    plot_lr_gridsearch(lr_csv, None)
+    save_path = "../figures/lr_plots_q3.png"
+    plot_lr_gridsearch(lr_csv, save_path)

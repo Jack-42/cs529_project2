@@ -1,5 +1,6 @@
 import scipy.sparse as sparse
 import numpy as np
+import matplotlib.pyplot as plt
 
 """
 @author Jack Ringer, Mike Adams,
@@ -164,6 +165,26 @@ def get_confusion_matrix(predicted: np.ndarray,
             withi = np.nonzero(pred[truthindices] == iclass)
             c[i, j] = withi[0].shape[0]
     return c
+
+
+def inc_plot_font_size():
+    """
+    Simple method to make the fonts of matplotlib plots larger.
+    This solution was taken directly from:
+    https://stackoverflow.com/questions/3899980/how-to-change-the-font-size-on-a-matplotlib-plot
+    :return: None
+    """
+    small_size = 14
+    medium_size = 16
+    bigger_size = 18
+
+    plt.rc('font', size=bigger_size)  # controls default text sizes
+    plt.rc('axes', titlesize=small_size)  # fontsize of the axes title
+    plt.rc('axes', labelsize=medium_size)  # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=small_size)  # fontsize of the tick labels
+    plt.rc('ytick', labelsize=small_size)  # fontsize of the tick labels
+    plt.rc('legend', fontsize=small_size)  # legend fontsize
+    plt.rc('figure', titlesize=bigger_size)  # fontsize of the figure title
 
 
 if __name__ == "__main__":
